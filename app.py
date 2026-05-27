@@ -1,44 +1,60 @@
 import streamlit as st
 import json
+from pathlib import Path
 
-# 1. ЧИТАЄМО ДАНІ
-with open("data.json", "r", encoding="utf-8") as f:
+st.set_page_config(page_title="Meta Ads Grid", layout="wide")
+
+# ---------- 1. БЕЗПЕЧНЕ ЗАВАНТАЖЕННЯ ДАНИХ ----------
+DATA_PATH = Path(__file__).parent / "data.json"
+
+if not DATA_PATH.exists():
+    st.error("❌ data.json не знайдено. Перевір GitHub репозиторій.")
+    st.stop()
+
+with open(DATA_PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 rows = data.get("rows", [])
 
-# 2. СТРУКТУРА СІТКИ
-groups = {
+if not isinstance(rows, list):
+    st.error("❌ Невірний формат JSON: 'rows' має бути списком")
+    st.stop()
+
+# ---------- 2. СТРУКТУРА ----------
+st.title("📊 Рекламна сітка Meta Ads")
+
+stages = {
     "awareness": [],
     "consideration": [],
     "conversion": [],
     "retention": []
 }
 
-# 3. ГРУПУВАННЯ
+# ---------- 3. ГРУПУВАННЯ (СТАБІЛЬНЕ) ----------
 for row in rows:
-    stage = row.get("stage", "unknown")
+    if not isinstance(row, dict):
+        continue
 
-    if isinstance(stage, str):
-        stage = stage.lower().strip()
-    else:
-        stage = "unknown"
+    stage = str(row.get("stage", "unknown")).lower().strip()
 
-    if stage in groups:
-        groups[stage].append(row)
+    if stage in stages:
+        stages[stage].append(row)
 
-# 4. UI
-st.title("📊 Рекламна сітка Meta Ads")
+# ---------- 4. UI ----------
+for stage_name, items in stages.items():
+    st.subheader(stage_name.upper())
 
-for stage, items in groups.items():
-    st.header(stage.upper())
+    if not items:
+        st.caption("Немає сценаріїв")
+        continue
 
     for item in items:
-        st.markdown("### Сценарій")
+        with st.container():
+            st.markdown("### 📌 Сценарій")
 
-        st.write("🎯 Аудиторія:", item.get("audience"))
-        st.write("🎨 Креатив:", item.get("creative"))
-        st.write("⚙️ Подія:", item.get("optimization_event"))
-        st.write("📊 KPI:", item.get("kpi"))
+            st.write("🎯 Аудиторія:", item.get("audience", "-"))
+            st.write("🎨 Креатив:", item.get("creative", "-"))
+            st.write("⚙️ Подія:", item.get("optimization_event", "-"))
+            st.write("📊 KPI:", item.get("kpi", "-"))
 
-        st.markdown("---")
+            st.divider()
